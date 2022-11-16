@@ -11,34 +11,32 @@ package com.bignerdranch.android.criminalintent
  */
 
 import android.os.Bundle
+import android.text.format.DateFormat
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import java.util.*
+
 
 private const val TAG = "CrimeListFragment"
 
 
 class CrimeListFragment : Fragment() {
     private lateinit var crimeRecyclerView: RecyclerView
-    private var adapter: CrimeAdapter? = null
+    private var adapter: CrimeAdapter? = CrimeAdapter(emptyList())
 
     private val crimeListViewModel: CrimeListViewModel by lazy {
         ViewModelProviders.of(this).get(CrimeListViewModel::class.java)
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        Log.d(TAG, "Total crimes: ${crimeListViewModel.crimes.size}")
-    }
 
     companion object {
         fun newInsance(): CrimeListFragment {
@@ -56,25 +54,47 @@ class CrimeListFragment : Fragment() {
         crimeRecyclerView =
             view.findViewById(R.id.crime_recycler_view) as RecyclerView// чтобы изменять разметку с помощью нашего файла
         crimeRecyclerView.layoutManager = LinearLayoutManager(context)
-        updateUI()
+        crimeRecyclerView.adapter = adapter
         return view
     }
 
-    private fun updateUI(){
-        val crimes = crimeListViewModel.crimes
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        crimeListViewModel.crimeListLiveData.observe(
+            viewLifecycleOwner,
+            Observer { crimes ->
+                crimes?.let {
+                    Log.i(TAG, "Got crimes ${crimes.size}")
+                    updateUI(crimes)
+                }
+            })
+    }
+
+
+    private fun updateUI(crimes: List<Crime>) {
+
         adapter = CrimeAdapter(crimes)
         crimeRecyclerView.adapter = adapter
     }
 
-    private inner class CrimeHolder(view: View) : RecyclerView.ViewHolder(view), View.OnClickListener {
+    private inner class CrimeHolder(view: View) : RecyclerView.ViewHolder(view),
+        View.OnClickListener {
         val titleTextView: TextView = itemView.findViewById(R.id.crime_title)
         val dateTextView: TextView = itemView.findViewById(R.id.crime_date)
-        private lateinit var crime:Crime
-        fun bind(crime: Crime){
+        private val solvedImageView: ImageView = itemView.findViewById(R.id.crime_solved)
+        private lateinit var crime: Crime
+        fun bind(crime: Crime) {
             this.crime = crime
             titleTextView.text = this.crime.title
-            dateTextView.text = this.crime.date.toString()
+
+            dateTextView.text = DateFormat.format("yyyy-MM-dd-E hh:mm:ss a", Date())
+            solvedImageView.visibility = if (crime.isSolved) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
         }
+
         init {
             itemView.setOnClickListener(this)
         }
